@@ -1,8 +1,21 @@
+/* 
+ * TAILWIND DIRECTIVES
+ * These two lines tell our compiler to bring in all of Tailwind's magical utility classes,
+ * and link them to our specific configuration file (where we defined our colors).
+ */
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
+
+/*
+ * LAYER BASE:
+ * Even though we use Tailwind HTML classes for almost everything, 
+ * sometimes we just want to set a "baseline" rule for the whole website.
+ */
 @layer base {
+  /* This says: The entire <body> of the HTML document should have these styles by default */
   body {
+    /* @apply lets us use Tailwind classes inside a normal CSS file! */
     @apply bg-zinc-950 text-zinc-100 antialiased;
   }
 }
