@@ -13,6 +13,7 @@
  * sometimes we just want to set a "baseline" rule for the whole website.
  */
 @layer base {
+
   /* This says: The entire <body> of the HTML document should have these styles by default */
   body {
     /* @apply lets us use Tailwind classes inside a normal CSS file! */

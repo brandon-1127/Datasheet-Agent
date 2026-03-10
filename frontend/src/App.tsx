@@ -1,11 +1,12 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { Upload, FileText, Cpu, Settings2 } from 'lucide-react';
+import { Upload, FileText, Cpu, Settings2, ArrowRight, X } from 'lucide-react';
 import classNames from 'classnames';
 import { ReactFlow, Background, Controls } from 'reactflow';
 import 'reactflow/dist/style.css';
+import DataNode from './components/DataNode';
 
-
+const nodeTypes = { customDataNode: DataNode };
 /**
  * Welcome to React! 
  * 
@@ -22,6 +23,7 @@ function App() {
    * Whenever `setFile` is called, React automatically re-draws the entire screen!
    */
   const [file, setFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   /**
    * This function runs when a user drops a file onto the screen.
@@ -52,7 +54,7 @@ function App() {
     // - `text-zinc-100`: Text color is very light gray (almost white).
     // - `flex flex-col`: Use CSS flexbox to stack things vertically (Column).
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans">
-      
+
       {/* 
         HEADER SECTION
         `sticky top-0 z-50` makes the header stick to the top of the screen when scrolling.
@@ -87,86 +89,134 @@ function App() {
           </p>
         </div>
 
-        {/* 
-          DROPZONE CONTAINER
-          `classNames` is a tool that lets us write "if/else" logic for CSS.
-          If `isDragActive` is true (the user is hovering a file), it adds the green `bg-zinc-800/50` colors!
-        */}
-        <div
-          {...getRootProps()}
-          className={classNames(
-            "w-full max-w-3xl rounded-3xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center p-16 cursor-pointer relative overflow-hidden group bg-zinc-900/30",
-            {
-              "border-zinc-500 bg-zinc-800/50": isDragActive,
-              "border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/50": !isDragActive && !file,
-              "border-emerald-900/50 bg-emerald-950/20": !!file // If `file` exists, make it green!
-            }
-          )}
-        >
-          {/* Subtle background glow effect (purely visual) */}
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-zinc-800/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+        {/* MAIN UI STATE MACHINE */}
+        {!isProcessing ? (
+          <>
+            {/* DROPZONE CONTAINER */}
+            <div
+              {...getRootProps()}
+              className={classNames(
+                "w-full max-w-3xl rounded-3xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center p-16 cursor-pointer relative overflow-hidden group bg-zinc-900/30",
+                {
+                  "border-zinc-500 bg-zinc-800/50": isDragActive,
+                  "border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/50": !isDragActive && !file,
+                  "border-emerald-900/50 bg-emerald-950/20": !!file
+                }
+              )}
+            >
+              {/* Subtle background glow effect (purely visual) */}
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent via-zinc-800/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
-          {/* This is a hidden HTML input that actually accepts the file when clicked */}
-          <input {...getInputProps()} />
+              {/* This is a hidden HTML input that actually accepts the file when clicked */}
+              <input {...getInputProps()} />
 
-          {/* 
-            CONDITIONAL RENDERING (The coolest part of React!)
-            If `file` is TRUE (we have a file), show the first <div> block.
-            If `file` is FALSE (null), show the second <div> block with the Upload icon.
-          */}
-          {file ? (
-            
-            // --- BLOCK 1: WE HAVE A FILE ---
-            <div className="w-full h-full min-h-[600px] rounded-3xl overflow-hidden border border-zinc-700 bg-zinc-900 shadow-xl bg-opacity-50">
-                <ReactFlow 
-                  nodes={[{ id: '1', position: { x: 100, y: 100 }, data: { label: 'Microcontroller (Drop Datasheet to Process)' } }]} 
-                  edges={[]}
-                  fitView
-                >
-                  {/* These add the dotted background and zoom controls! */}
-                  <Background color="#52525b" gap={16} />
-                  <Controls className="bg-zinc-800 fill-white text-white border-zinc-700" />
-                </ReactFlow>
+              {/* 
+                CONDITIONAL RENDERING (The coolest part of React!)
+                If `file` is TRUE (we have a file), show the first <div> block.
+                If `file` is FALSE (null), show the second <div> block with the Upload icon.
+              */}
+              {file ? (
+
+                // --- BLOCK 1: WE HAVE A FILE, READY TO PROCESS ---
+                <div className="flex flex-col items-center text-center z-10 transition-all">
+                  <div className="w-20 h-20 rounded-2xl bg-zinc-800 border border-zinc-700 flex items-center justify-center mb-6 shadow-xl">
+                    <FileText className="w-10 h-10 text-zinc-300" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-white mb-2">{file.name}</h3>
+                  <p className="text-sm text-zinc-400 mb-8">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+
+                  <button
+                    className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 p-4 rounded-full transition-all hover:scale-105 shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center group/btn"
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      setIsProcessing(true); // Tell React we are now moving to the drawing phase
+                    }}
+                  >
+                    <ArrowRight className="w-8 h-8 group-hover/btn:translate-x-1 transition-transform" />
+                  </button>
+                  <p className="mt-4 text-emerald-500/80 font-medium text-sm">Click to process</p>
+                </div>
+              ) : (
+
+                // --- BLOCK 2: NO FILE YET ---
+                <div className="flex flex-col items-center text-center z-10 opacity-70 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="w-24 h-24 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-6 ring-8 ring-zinc-900/50 group-hover:ring-zinc-800/50 transition-all">
+                    <Upload className="w-10 h-10 text-zinc-400" />
+                  </div>
+                  <h3 className="text-xl font-medium text-zinc-200 mb-2">
+                    {/* Dynamically change the text if dragging! */}
+                    {isDragActive ? "Drop the PDF here..." : "Drag & drop your datasheet"}
+                  </h3>
+                  <p className="text-sm text-zinc-500">
+                    or click to browse your files (PDF only)
+                  </p>
+                </div>
+              )}
             </div>
-          ) : (
 
-            // --- BLOCK 2: NO FILE YET ---
-            <div className="flex flex-col items-center text-center z-10 opacity-70 group-hover:opacity-100 transition-opacity duration-300">
-              <div className="w-24 h-24 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-6 ring-8 ring-zinc-900/50 group-hover:ring-zinc-800/50 transition-all">
-                <Upload className="w-10 h-10 text-zinc-400" />
+            {/* BOARD SELECTION DROPDOWN */}
+            <div className="flex gap-4 items-center mt-8">
+              <div className="flex items-center gap-3 bg-zinc-900 px-6 py-3 rounded-full border border-zinc-800 shadow-md">
+                <Settings2 className="w-6 h-6 text-zinc-400" />
+                <select className="bg-transparent text-lg font-medium text-zinc-300 outline-none appearance-none cursor-pointer">
+                  <option value="arduino">Arduino</option>
+                  <option value="esp32">ESP32</option>
+                  <option value="nordic">Nordic nRF52</option>
+                  <option value="raspberry-pi-pico">Raspberry Pi Pico</option>
+                  <option value="raspberry-pi-5/4">Raspberry Pi 5/4</option>
+                  <option value="stm32">STM32</option>
+                </select>
               </div>
-              <h3 className="text-xl font-medium text-zinc-200 mb-2">
-                {/* Dynamically change the text if dragging! */}
-                {isDragActive ? "Drop the PDF here..." : "Drag & drop your datasheet"}
-              </h3>
-              <p className="text-sm text-zinc-500">
-                or click to browse your files (PDF only)
-              </p>
             </div>
-          )}
-        </div>
-        
-        {/* 
-          BOARD SELECTION DROPDOWN
-          We moved this here! Let's look at the Tailwind classes we added:
-          - `mt-8`: Adds "Margin Top" to separate it from the drop box above it.
-          - `px-6 py-3`: Padding on the X (left/right) and Y (up/down) axes. We doubled these numbers!
-          - `text-lg`: Makes the text "large". The icon size `w-6 h-6` was also increased.
-          transition-transform hover:scale-105
-        */}
-        <div className="flex gap-4 items-center mt-8">
-          <div className="flex items-center gap-3 bg-zinc-900 px-6 py-3 rounded-full border border-zinc-800 shadow-md">
-            <Settings2 className="w-6 h-6 text-zinc-400" />
-            <select className="bg-transparent text-lg font-medium text-zinc-300 outline-none appearance-none cursor-pointer">
-              <option value="arduino">Arduino</option>
-              <option value="esp32">ESP32</option>
-              <option value="nordic">Nordic nRF52</option>
-              <option value="raspberry-pi-pico">Raspberry Pi Pico</option>
-              <option value="raspberry-pi-5/4">Raspberry Pi 5/4</option>
-              <option value="stm32">STM32</option>
-            </select>
+          </>
+        ) : (
+          // --- BLOCK 3: PROCESSING (REACT FLOW CANVAS) ---
+          // This block is completely outside of the dropzone, so dragging a file here won't do anything!
+          <div className="w-full h-[600px] rounded-3xl overflow-hidden border border-zinc-700 bg-zinc-900 shadow-2xl relative animate-in fade-in zoom-in-95 duration-500">
+            {/* Exit Button */}
+            <button 
+              className="absolute top-4 right-4 z-10 bg-zinc-800/90 hover:bg-zinc-700 text-zinc-300 p-2.5 rounded-lg border border-zinc-600 transition-colors flex items-center gap-2 backdrop-blur-sm shadow-lg hover:text-white"
+              onClick={() => {
+                setFile(null); // Clear the file
+                setIsProcessing(false); // Go back to the dropzone state
+              }}
+            >
+              <X className="w-4 h-4" />
+              <span className="text-sm font-medium">Clear & Exit</span>
+            </button>
+
+            <ReactFlow
+              nodeTypes={nodeTypes}
+              nodes={[
+                {
+                  id: '1',
+                  type: 'customDataNode',
+                  position: { x: 100, y: 100 },
+                  data: { label: 'Microcontroller', value: 'ESP32' }
+                },
+                {
+                  id: '2',
+                  type: 'customDataNode',
+                  position: { x: 100, y: 300 },
+                  data: { label: 'Operating Voltage', value: '3.3V' }
+                }
+              ]}
+              edges={[
+                {
+                  id: 'e1-2',
+                  source: '1',
+                  target: '2',
+                  animated: true,
+                  style: { stroke: '#10b981', strokeWidth: 2 }
+                }
+              ]}
+              fitView
+            >
+              <Background color="#52525b" gap={16} />
+              <Controls className="bg-zinc-800 fill-white text-white border-zinc-700" />
+            </ReactFlow>
           </div>
-        </div>
+        )}
 
       </main>
     </div>
