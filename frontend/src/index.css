@@ -20,3 +20,43 @@
     @apply bg-zinc-950 text-zinc-100 antialiased;
   }
 }
+
+/*
+ * OVERRIDING REACT FLOW STYLES
+ * By default, React Flow uses standard white buttons. We want to override their 
+ * default CSS classes to match our dark zinc theme! We use `!important` 
+ * (the `!` flag in Tailwind) to force our styles to win over their old defaults.
+ */
+.react-flow__controls {
+  @apply !bg-zinc-900 !border-2 !border-zinc-800 !rounded-xl !p-1.5 !shadow-2xl !flex !flex-col !gap-1.5 !m-4;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
+}
+
+.react-flow__controls-button {
+  /* Give each button its own dark background and rounding */
+  @apply !bg-zinc-800 !border !border-zinc-700 !rounded-lg !transition-colors !flex !items-center !justify-center !w-8 !h-8 !border-b-0;
+  border-bottom-width: 1px !important;
+}
+
+.react-flow__controls-button:hover {
+  @apply !bg-zinc-700 !border-zinc-600;
+}
+
+.react-flow__controls-button svg {
+  /* Color the icons light gray */
+  @apply !fill-zinc-400 !transition-colors;
+}
+
+.react-flow__controls-button:hover svg {
+  /* Make the icons turn white when you hover over them */
+  @apply !fill-zinc-100;
+}
+
+/*
+ * STYLING THE REACT FLOW ATTRIBUTION
+ * We style the tiny "React Flow" link in the bottom right corner 
+ * to look like a subtle, rounded badge instead of plain text!
+ */
+.react-flow__attribution {
+  @apply !bg-zinc-800/80 !backdrop-blur-sm !text-zinc-400 !px-3 !py-1 !rounded-full !text-[10px] !font-medium !m-2 !transition-colors hover:!bg-zinc-700/80 hover:!text-zinc-200;
+}

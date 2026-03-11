@@ -213,7 +213,7 @@ function App() {
               fitView
             >
               <Background color="#52525b" gap={16} />
-              <Controls className="bg-zinc-800 fill-white text-white border-zinc-700" />
+              <Controls />
             </ReactFlow>
           </div>
         )}
