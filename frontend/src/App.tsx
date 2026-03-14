@@ -7,6 +7,7 @@ import 'reactflow/dist/style.css';
 import DataNode from './components/DataNode';
 
 const nodeTypes = { customDataNode: DataNode };
+
 /**
  * Welcome to React! 
  * 
@@ -127,9 +128,21 @@ function App() {
 
                   <button
                     className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 p-4 rounded-full transition-all hover:scale-105 shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center group/btn"
-                    onClick={(e) => { 
-                      e.stopPropagation(); 
-                      setIsProcessing(true); // Tell React we are now moving to the drawing phase
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const myFormDataBox = new FormData();
+                      myFormDataBox.append("file", file)
+                      try {
+                        const response = await fetch("http://127.0.0.1:8000/upload_pdf", {
+                          method: 'POST',
+                          body: myFormDataBox
+                        });
+                        const data = await response.json();
+                        console.log("python server replied, data: ", data.reply);
+                        setIsProcessing(true); // Tell React we are now moving to the drawing phase
+                      } catch (error) {
+                        console.error("Error processing file:", error);
+                      }
                     }}
                   >
                     <ArrowRight className="w-8 h-8 group-hover/btn:translate-x-1 transition-transform" />
@@ -174,7 +187,7 @@ function App() {
           // This block is completely outside of the dropzone, so dragging a file here won't do anything!
           <div className="w-full h-[600px] rounded-3xl overflow-hidden border border-zinc-700 bg-zinc-900 shadow-2xl relative animate-in fade-in zoom-in-95 duration-500">
             {/* Exit Button */}
-            <button 
+            <button
               className="absolute top-4 right-4 z-10 bg-zinc-800/90 hover:bg-zinc-700 text-zinc-300 p-2.5 rounded-lg border border-zinc-600 transition-colors flex items-center gap-2 backdrop-blur-sm shadow-lg hover:text-white"
               onClick={() => {
                 setFile(null); // Clear the file
@@ -186,7 +199,7 @@ function App() {
             </button>
 
             <ReactFlow
-              nodeTypes={nodeTypes}
+              nodeTypes={nodeTypes} 
               nodes={[
                 {
                   id: '1',
