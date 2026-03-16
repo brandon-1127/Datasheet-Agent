@@ -25,6 +25,8 @@ function App() {
    */
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedBoard, setSelectedBoard] = useState("arduno");
 
   /**
    * This function runs when a user drops a file onto the screen.
@@ -130,8 +132,15 @@ function App() {
                     className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 p-4 rounded-full transition-all hover:scale-105 shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center group/btn"
                     onClick={async (e) => {
                       e.stopPropagation();
+                      
+                      // 1. Kick off the loading screen immediately
+                      setIsLoading(true);
+                      setIsProcessing(true); // Tell React we are leaving the dropzone state
+                      
                       const myFormDataBox = new FormData();
-                      myFormDataBox.append("file", file)
+                      myFormDataBox.append("file", file);
+                      myFormDataBox.append("board",selectedBoard)
+                      
                       try {
                         const response = await fetch("http://127.0.0.1:8000/upload_pdf", {
                           method: 'POST',
@@ -139,9 +148,14 @@ function App() {
                         });
                         const data = await response.json();
                         console.log("python server replied, data: ", data.reply);
-                        setIsProcessing(true); // Tell React we are now moving to the drawing phase
+                        
+                        // 2. Turn off loader and switch to the diagram phase
+                        setIsLoading(false);
+                        setIsProcessing(true); 
                       } catch (error) {
                         console.error("Error processing file:", error);
+                        // Make sure we stop loading even on error!
+                        setIsLoading(false);
                       }
                     }}
                   >
@@ -171,7 +185,10 @@ function App() {
             <div className="flex gap-4 items-center mt-8">
               <div className="flex items-center gap-3 bg-zinc-900 px-6 py-3 rounded-full border border-zinc-800 shadow-md">
                 <Settings2 className="w-6 h-6 text-zinc-400" />
-                <select className="bg-transparent text-lg font-medium text-zinc-300 outline-none appearance-none cursor-pointer">
+                <select 
+                  value={selectedBoard}
+                  onChange={(e) => setSelectedBoard(e.target.value)}
+                  className="bg-transparent text-lg font-medium text-zinc-300 outline-none appearance-none cursor-pointer">
                   <option value="arduino">Arduino</option>
                   <option value="esp32">ESP32</option>
                   <option value="nordic">Nordic nRF52</option>
@@ -182,6 +199,28 @@ function App() {
               </div>
             </div>
           </>
+        ) : isLoading ? (
+          // --- BLOCK: LOADING AI RESPONSE ---
+          <div className="w-full max-w-3xl flex flex-col items-center justify-center p-16 relative animate-in fade-in duration-500">
+            {/* The outer ring (spins slowly) */}
+            <div className="relative w-32 h-32 flex items-center justify-center">
+              <div className="absolute inset-0 rounded-full border-t-2 border-zinc-700 animate-[spin_3s_linear_infinite]" />
+              
+              {/* The inner ring (spins faster, offset border for effect) */}
+              <div className="absolute inset-2 rounded-full border-r-2 border-b-2 border-emerald-500/50 animate-[spin_1s_linear_infinite]" />
+              
+              {/* Center icon */}
+              <Cpu className="w-8 h-8 text-zinc-400 animate-pulse" />
+            </div>
+            
+            <h3 className="text-2xl font-semibold text-white mt-12 mb-2">Analyzing Datasheet</h3>
+            <div className="flex items-center gap-1 text-zinc-400 font-medium tracking-widest text-lg">
+              Loading
+              <span className="animate-[bounce_1.4s_infinite_[-0.3s]] text-emerald-500">.</span>
+              <span className="animate-[bounce_1.4s_infinite_[-0.15s]] text-emerald-500">.</span>
+              <span className="animate-[bounce_1.4s_infinite_0s] text-emerald-500">.</span>
+            </div>
+          </div>
         ) : (
           // --- BLOCK 3: PROCESSING (REACT FLOW CANVAS) ---
           // This block is completely outside of the dropzone, so dragging a file here won't do anything!
