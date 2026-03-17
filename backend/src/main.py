@@ -24,22 +24,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-prompt = """
-    You are a senior hardware engineer analyzing a datasheet. 
-    Extract the requested information and return it STRICTLY as a raw JSON object. 
-    Do not include markdown blocks (like ```json), just the raw JSON text.
-    
-    Structure your JSON exactly like this:
-    {
-        "critical_info": {
-            "component": "Name of the chip/board",
-            "voltage": "Operating voltage range",
-            "pins": "List of the most critical pins (max 5)"
-        },
-        "code": "Write a concise script to initialize this component for a board that will also be provided for you. Also, if the component takes any input or ouput from the board, include that starter code in the code.",
-        "tips": "Write one paragraph of debugging tips."
-    }
-    """
 
 
 # only accepts GET request, getting data
@@ -58,19 +42,39 @@ def receive_test_message(data: SimpleMessage):
 @app.post("/upload_pdf")
 def receive_pdf(file: UploadFile = File(...), board: str = Form(...)):
     
-    print(board)
+    print(f"Target board: {board}")
     #temporarily save file to disk
     with open(file.filename, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
     print("File saved! Uploading to Gemini...")
 
+    prompt = f"""
+    You are a senior hardware engineer analyzing a datasheet. 
+    Extract the requested information and return it STRICTLY as a raw JSON object. 
+    Do not include markdown blocks (like ```json), just the raw JSON text.
+    
+    Structure your JSON exactly like this:
+    {{
+        "critical_info": {{
+            "component": "Name of the chip/board",
+            "voltage": "Operating voltage range",
+            "current_draw": "Current draw of the chip/board",
+            "pins": "List of the specific pins on the {board} micro-controller that this component should be connected to. If the datasheet does not provide specific pin connections, look them up or describe the communication protocol being used (e.g., I2C on SDA/SCL, SPI, etc.), separated by commas and spaces",
+            "additional_hardware": "List of any additional hardware required"
+        }},
+        "code_language": "The programming language primarily used by the {board} (e.g. C++ for Arduino, Python for Raspberry Pi, etc.)",
+        "code": "Write a concise starter script to initialize this component for the {board} platform. Write the script in the primary language that the {board} uses. Also, if the component takes any input or output from the board, include that starter code.",
+        "tips": "Write one paragraph of debugging tips."
+    }}
+    """
+
     #upload to gemini
     uploaded_file = ai_client.files.upload(file=file.filename)
     print("File uploaded to Gemini. Asking gemini to read it...")
     response = ai_client.models.generate_content(
         model="gemini-2.5-flash",
-        contents = [uploaded_file, prompt, board],
+        contents = [uploaded_file, prompt],
         config = genai.types.GenerateContentConfig(
             response_mime_type="application/json",
         ),

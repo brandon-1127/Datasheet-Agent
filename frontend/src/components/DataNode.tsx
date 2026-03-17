@@ -9,7 +9,7 @@ import { Cpu } from 'lucide-react';
 export default function DataNode({ data }: { data: any }) {
     return (
         // We style the box exactly like our other UI elements (dark gray, rounded corners)
-        <div className="bg-zinc-900 border-2 border-zinc-700 rounded-xl p-4 shadow-xl min-w-[200px]">
+        <div className="bg-zinc-900 border-2 border-zinc-700 rounded-xl p-4 shadow-xl w-[350px]">
 
             {/* 
         THE 'HANDLE' 
@@ -31,7 +31,7 @@ export default function DataNode({ data }: { data: any }) {
                 </div>
             </div>
 
-            <div className="text-2xl font-mono text-white pl-1">
+            <div className="text-xl font-mono text-white pl-1 whitespace-pre-wrap break-words">
                 {data.value}
             </div>
             {/* Put a connection Handle on the bottom (Source) to send arrows out */}

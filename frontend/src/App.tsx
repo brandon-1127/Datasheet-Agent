@@ -2,11 +2,12 @@ import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, FileText, Cpu, Settings2, ArrowRight, X } from 'lucide-react';
 import classNames from 'classnames';
-import { ReactFlow, Background, Controls } from 'reactflow';
+import { ReactFlow, Background, Controls, useNodesState, useEdgesState } from 'reactflow';
 import 'reactflow/dist/style.css';
 import DataNode from './components/DataNode';
+import CodeNode from './components/CodeNode';
 
-const nodeTypes = { customDataNode: DataNode };
+const nodeTypes = { customDataNode: DataNode, codeNode: CodeNode };
 
 /**
  * Welcome to React! 
@@ -26,7 +27,11 @@ function App() {
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedBoard, setSelectedBoard] = useState("arduno");
+  const [selectedBoard, setSelectedBoard] = useState("arduino");
+
+  // React Flow State for Draggable Graph
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   /**
    * This function runs when a user drops a file onto the screen.
@@ -147,7 +152,44 @@ function App() {
                           body: myFormDataBox
                         });
                         const data = await response.json();
-                        console.log("python server replied, data: ", data.reply);
+
+                        console.log("python server replied, data: ", data);
+                        
+                        // Construct the nodes dynamically with perfect 3-column symmetry
+                        setNodes([
+                          // Root Node (Center x: 800)
+                          { id: 'component', type: 'customDataNode', position: { x: 625, y: 50 }, data: { label: 'Component', value: data.critical_info?.component || 'Unknown Component'} },
+                          
+                          // Left Column (Center x: 175)
+                          { id: 'voltage', type: 'customDataNode', position: { x: 0, y: 250 }, data: { label: 'Operating Voltage', value: data.critical_info?.voltage || 'Unknown Voltage' } },
+                          { id: 'current', type: 'customDataNode', position: { x: 0, y: 450 }, data: { label: 'Current Draw', value: data.critical_info?.current_draw || 'Unknown' } },
+                          { id: 'pins', type: 'customDataNode', position: { x: 0, y: 650 }, data: { label: 'Critical Pins', value: data.critical_info?.pins || 'Unknown Pins' } },
+                          { id: 'hardware', type: 'customDataNode', position: { x: 0, y: 1050 }, data: { label: 'Additional Hardware', value: data.critical_info?.additional_hardware || 'None' } },
+
+                          // Middle Column (Center x: 800)
+                          { id: 'code', type: 'customDataNode', position: { x: 625, y: 250 }, data: { label: 'Starter Code', value: data.code ? 'Ready to copy' : 'None' } },
+                          { id: 'code_content', type: 'codeNode', position: { x: 450, y: 450 }, data: { label: 'Implementation', value: data.code || 'None', language: data.code_language } },
+                          
+                          // Right Column (Center x: 1425)
+                          { id: 'tips', type: 'customDataNode', position: { x: 1250, y: 250 }, data: { label: 'Debugging Tips', value: data.tips ? 'See details below' : 'None' } },
+                          { id: 'tips_content', type: 'customDataNode', position: { x: 1250, y: 450 }, data: { label: 'Details', value: data.tips || 'None' } }
+                        ]);
+
+                        setEdges([
+                          // Branches from Component to the top of each column
+                          { id: 'e-comp-volt', source: 'component', target: 'voltage', animated: true, style: { stroke: '#10b981', strokeWidth: 2 } },
+                          { id: 'e-comp-code', source: 'component', target: 'code', animated: true, style: { stroke: '#10b981', strokeWidth: 2 } },
+                          { id: 'e-comp-tips', source: 'component', target: 'tips', animated: true, style: { stroke: '#10b981', strokeWidth: 2 } },
+                          
+                          // Left Vertical Column Connections
+                          { id: 'e-volt-curr', source: 'voltage', target: 'current', animated: true, style: { stroke: '#10b981', strokeWidth: 2 } },
+                          { id: 'e-curr-pins', source: 'current', target: 'pins', animated: true, style: { stroke: '#10b981', strokeWidth: 2 } },
+                          { id: 'e-pins-hw', source: 'pins', target: 'hardware', animated: true, style: { stroke: '#10b981', strokeWidth: 2 } },
+
+                          // Middle and Right Content Connections
+                          { id: 'e-code-content', source: 'code', target: 'code_content', animated: true, style: { stroke: '#10b981', strokeWidth: 2 } },
+                          { id: 'e-tips-content', source: 'tips', target: 'tips_content', animated: true, style: { stroke: '#10b981', strokeWidth: 2 } }
+                        ]);
                         
                         // 2. Turn off loader and switch to the diagram phase
                         setIsLoading(false);
@@ -195,6 +237,7 @@ function App() {
                   <option value="raspberry-pi-pico">Raspberry Pi Pico</option>
                   <option value="raspberry-pi-5/4">Raspberry Pi 5/4</option>
                   <option value="stm32">STM32</option>
+                  <option value="MSPM0">MSPM0</option>
                 </select>
               </div>
             </div>
@@ -216,9 +259,9 @@ function App() {
             <h3 className="text-2xl font-semibold text-white mt-12 mb-2">Analyzing Datasheet</h3>
             <div className="flex items-center gap-1 text-zinc-400 font-medium tracking-widest text-lg">
               Loading
-              <span className="animate-[bounce_1.4s_infinite_[-0.3s]] text-emerald-500">.</span>
-              <span className="animate-[bounce_1.4s_infinite_[-0.15s]] text-emerald-500">.</span>
               <span className="animate-[bounce_1.4s_infinite_0s] text-emerald-500">.</span>
+              <span className="animate-[bounce_1.4s_infinite_.33s] text-emerald-500">.</span>
+              <span className="animate-[bounce_1.4s_infinite_.66s] text-emerald-500">.</span>
             </div>
           </div>
         ) : (
@@ -239,30 +282,14 @@ function App() {
 
             <ReactFlow
               nodeTypes={nodeTypes} 
-              nodes={[
-                {
-                  id: '1',
-                  type: 'customDataNode',
-                  position: { x: 100, y: 100 },
-                  data: { label: 'Microcontroller', value: 'ESP32' }
-                },
-                {
-                  id: '2',
-                  type: 'customDataNode',
-                  position: { x: 100, y: 300 },
-                  data: { label: 'Operating Voltage', value: '3.3V' }
-                }
-              ]}
-              edges={[
-                {
-                  id: 'e1-2',
-                  source: '1',
-                  target: '2',
-                  animated: true,
-                  style: { stroke: '#10b981', strokeWidth: 2 }
-                }
-              ]}
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              minZoom={0.35}
+              maxZoom={4}
               fitView
+              fitViewOptions={{ padding: 0.3, minZoom: 0.35}}
             >
               <Background color="#52525b" gap={16} />
               <Controls />
